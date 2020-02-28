@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">SensorTest</string>
+    <string name="x_pitch">x軸（Pitch）</string>
+    <string name="z_yaw">z軸（Yaw?）</string>
+    <string name="y_roll">y軸（Roll）</string>
+    <string name="x_mag">x軸（地磁気強度）</string>
+    <string name="y_mag">y軸（地磁気強度）</string>
+    <string name="z_mag">z軸（地磁気強度）</string>
+    <string name="x_attitude">x軸角度</string>
+    <string name="y_attitude">y軸角度</string>
+    <string name="z_attitude">z軸角度</string>
+    <string name="timestamp">タイムスタンプ</string>
+    <string name="start_text">スタート</string>
+    <string name="stop_text">ストップ</string>
+    <string name="save_text">保存</string>
+</resources>
