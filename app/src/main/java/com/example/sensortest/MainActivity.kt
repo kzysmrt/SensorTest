@@ -3,16 +3,16 @@ package com.example.sensortest
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
-import android.os.Handler
+import android.net.Uri
+import android.os.*
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +35,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var geomagnetic = FloatArray(3)
     private var attitude= FloatArray(3)
     private var nowtime: Long = 0L
+    //WakeLockの処理
+    private var wakelock: PowerManager.WakeLock? = null
+    private var powerManager: PowerManager? = null
 
     //定数
     private val RAD2DEG: Double = 180 / Math.PI
@@ -73,7 +76,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 obj.y_meme_attitude = meme_attitude[1]
                 obj.z_meme_attitude = meme_attitude[2]
                 id += 1
-                //Log.d("TAG", id.toString())
+                Log.d("TAG", (attitude[1] * RAD2DEG.toFloat()).toString())
             }
 
         }
@@ -225,6 +228,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         if(Build.VERSION.SDK_INT >= 23){
             checkStoragePermission()    //外部ストレージ用
             checkLocationPermission()   //JINS MEMEで必要
+
         }
 
         //ボタンの処理
@@ -245,11 +249,35 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         memeLib = MemeLib.getInstance()
         memeLib.setVerbose(true)
         memeLib?.setMemeConnectListener(memeConnectListener)
+
+        //WakeLockの処理
+        //https://qiita.com/KoheiKanagu/items/20243f9f8e777818c74e
+        //https://developer.android.com/training/scheduling/wakelock?hl=ja
+        //http://uchida001tmhr.hatenablog.com/entry/2017/12/17/002553
+        if(Build.VERSION.SDK_INT >= 23) {
+            //startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            powerManager = getSystemService(PowerManager::class.java)
+            if (!powerManager!!.isIgnoringBatteryOptimizations(getPackageName())){
+                var intent: Intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                intent.setData(Uri.parse("package: " + getPackageName()))
+                startActivity(intent)
+                Log.d("TAG", "start doze taisaku.")
+            }
+        }
+        wakelock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag").apply {
+                acquire()
+                Log.d("TAG", "start wake lock.")
+            }
+        }
+
     }
+
 
     //onDestroy
     override fun onDestroy() {
         super.onDestroy()
+        wakelock?.release()
         realm.close()
     }
 
@@ -344,6 +372,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         //地磁気センサ
         val magSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
         sensorManager.registerListener(this, magSensor, SensorManager.SENSOR_DELAY_GAME)
+
     }
 
     override fun onPause() {
@@ -409,6 +438,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         x_pitch.setText(meme_attitude[0].toString())
         y_roll.setText(meme_attitude[1].toString())
         z_yaw.setText(meme_attitude[2].toString())
+
+        Log.d("TAG", "sensors are working...")
 
     }
 
