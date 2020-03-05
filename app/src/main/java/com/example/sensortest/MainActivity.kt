@@ -2,8 +2,10 @@ package com.example.sensortest
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.hardware.Sensor
@@ -55,6 +57,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private val handler = Handler()
     private val runnable = object: Runnable{
         override fun run(){
+            //角度の値を取ってくる
+            attitude = mBinder?.getAttitude()!!
+
             //端末角度
             x_attitude.setText((attitude[0] * RAD2DEG).toString())
             y_attitude.setText((attitude[1] * RAD2DEG).toString())
@@ -78,6 +83,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 id += 1
                 Log.d("TAG", (attitude[1] * RAD2DEG.toFloat()).toString())
             }
+
+            //var temp = FloatArray(3)
+            //temp = mBinder?.getAttitude()!!
+            //Log.d("BIND", (temp[1] * RAD2DEG.toFloat()).toString())
 
         }
     }
@@ -215,6 +224,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
     }
 
+    //バインド用に使う
+    //https://kojion.com/posts/649
+    private var mBinder: SensorService.MyBinder? = null
+
+    private val mConnection = object: ServiceConnection{
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            //TODO("Not yet implemented")
+            mBinder = binder as SensorService.MyBinder
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            //TODO("Not yet implemented")
+            mBinder = null
+        }
+    }
 
     //onCreate
     @SuppressLint("SourceLockedOrientationActivity")
@@ -271,12 +295,24 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
         }
 
+        //WakeLockはうまくいかないので、サービスでやってみる
+        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O){
+            val serviceIntent = Intent(this,SensorService::class.java)
+            startForegroundService(serviceIntent)
+        }
+        //さらにバインドしてみる
+        val bindintent = Intent(this, SensorService::class.java)
+        bindService(bindintent, mConnection, Context.BIND_AUTO_CREATE)
     }
 
 
     //onDestroy
     override fun onDestroy() {
         super.onDestroy()
+        //サービスを停止
+        val intent = Intent(this, SensorService::class.java)
+        stopService(intent)
+        unbindService(mConnection)
         wakelock?.release()
         realm.close()
     }
@@ -387,6 +423,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         //TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        /*
         if (event == null) return
 
         //timestamp
@@ -434,12 +471,13 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             //y_attitude.setText((attitude[1] * RAD2DEG).toString())
             //z_attitude.setText((attitude[2] * RAD2DEG).toString())
         }
+        */
 
         x_pitch.setText(meme_attitude[0].toString())
         y_roll.setText(meme_attitude[1].toString())
         z_yaw.setText(meme_attitude[2].toString())
 
-        Log.d("TAG", "sensors are working...")
+        //Log.d("TAG", "sensors are working...")
 
     }
 
